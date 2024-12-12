@@ -1,0 +1,7 @@
+.terraform.lock.hcl
+comandos K8S.txt
+plano-test
+terraform.tfstate
+terraform.tfstate.backup
+secret.tfvars
+/K8S/AZURE/agent.yaml
