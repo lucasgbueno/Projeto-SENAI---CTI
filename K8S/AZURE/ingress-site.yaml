@@ -1,0 +1,34 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-nginx
+  namespace: multi-cloud-cti
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  tls:
+  - hosts:
+    - "mesa4.ctiturbo.com.br"
+    - "www.mesa4.ctiturbo.com.br"
+    secretName: letsencrypt-prod-multicloud
+  rules:
+  - host: mesa4.ctiturbo.com.br
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: site-cti
+            port:
+              number: 80
+  - host: www.mesa4.ctiturbo.com.br  # Adicionando uma regra para o segundo domínio
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: site-cti
+            port:
+              number: 80
