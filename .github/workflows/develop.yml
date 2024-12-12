@@ -1,0 +1,176 @@
+name: Terraform Multi-cloud Deployment
+
+on:
+  push:
+    branches:
+      - develop
+  pull_request:
+
+env:
+  AWS_REGION: us-east-1
+  AZURE_REGION: East US
+  EKS_NAME: eks-tf-cti
+  AKS_NAME: aks-tf-cti
+  RG_NAME: RG-AKS-CTI
+  TERRAFORM_VERSION: 1.0.11
+  KUBECTL_VERSION: 1.22.0
+  EKSCTL_VERSION: 0.98.0  # Você pode ajustar a versão conforme necessário
+  AZURE_CLI_VERSION: 2.46.0  # Ajuste conforme necessário
+
+jobs:
+  setup_infrastructure:
+    name: Setup AWS EKS and Azure AKS Infrastructure
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      # Configurar AWS Credenciais
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Configurar Azure Credenciais
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # Instalar o Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      # Definir a variável EKS_SERVICE_ROLE_ARN para o Terraform
+      - name: Set EKS Service Role ARN
+        run: echo "export eks_service_role_arn=${{ secrets.eks_service_role_arn }}" >> $GITHUB_ENV
+
+      - name: Set EKS Instance Role ARN
+        run: echo "export eks_instance_role_arn=${{ secrets.eks_instance_role_arn }}" >> $GITHUB_ENV
+
+      # Inicializar o Terraform
+      - name: Terraform Init
+        run: terraform init
+
+      # Aplicar o Terraform para provisionar a infraestrutura (EKS e AKS)
+      - name: Terraform Apply
+        run: terraform apply -var "subId=${{ secrets.subId }}" --auto-approve
+        #run: terraform apply --auto-approve
+
+  configure_kubernetes:
+    name: Configure Kubernetes on EKS and AKS
+    runs-on: ubuntu-latest
+    needs: setup_infrastructure
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      # Configurar AWS Credenciais
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Configurar Azure Credenciais
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # Instalar o AWS CLI
+      - name: Install AWS CLI
+        run: |
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          sudo ./aws/install
+
+      # Instalar o eksctl
+      - name: Install eksctl
+        run: |
+          curl --location "https://github.com/weaveworks/eksctl/releases/download/v${{ env.EKSCTL_VERSION }}/eksctl_Linux_amd64.tar.gz" | tar xz -C /tmp
+          sudo mv /tmp/eksctl /usr/local/bin
+
+      # Instalar o kubectl
+      - name: Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/v${{ env.KUBECTL_VERSION }}/bin/linux/amd64/kubectl"
+          chmod +x ./kubectl
+          sudo mv ./kubectl /usr/local/bin/kubectl
+
+      # Instalar o Azure CLI
+      - name: Install Azure CLI
+        run: |
+          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
+      # Configurar o EKS (obter o kubeconfig para o EKS)
+      - name: Get EKS kubeconfig
+        run: |
+          eksctl utils write-kubeconfig --cluster= ${{ env.EKS_NAME }} --region ${{ env.AWS_REGION }}
+
+      # Aplicar Configurações no EKS com kubectl
+      - name: Apply kubesphere-installer in EKS Resources with kubectl
+        run: |
+          kubectl apply -f K8S/AWS/kubesphere-installer.yaml
+
+      - name: Configure Default StorageClass in EKS Resources with kubectl
+        run: |
+          kubectl patch storageclass gp2 -p "{\"metadata\": {\"annotations\": {\"storageclass.kubernetes.io/is-default-class\": \"true\"}}}"
+
+      - name: Apply kubesphere-cluster-configuration in EKS Resources with kubectl
+        run: |
+          kubectl apply -f K8S/AWS/cluster-configuration.yaml
+
+      - name: Apply install nginx-ingress in EKS Resources with kubectl
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
+
+      - name: Apply install cert-manager in EKS Resources with kubectl
+        run: |
+          kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.1/cert-manager.yaml
+
+      - name: Apply create nameserver in EKS Resources with kubectl
+        run: |
+          kubectl create ns multi-cloud-cti
+
+      - name: Apply letsecrypt in EKS Resources with kubectl
+        run: |
+          kubectl apply -f K8S/AWS/letsencrypt.yaml
+
+      - name: Apply ingress-nginx in EKS Resources with kubectl
+        run: |
+          kubectl apply -f K8S/AWS/ingress-site.yaml
+
+      # Configurar o AKS (obter o kubeconfig para o AKS)
+      - name: Get AKS kubeconfig
+        run: |
+          az aks get-credentials --resource-group ${{ env.RG_NAME }} --name ${{ env.AKS_NAME }}
+
+      # Aplicar Configurações no AKS com kubectl
+      - name: Apply kubesphere-installer in AKS Resources with kubectl
+        run: |
+          kubectl apply -f K8S/AZURE/kubesphere-installer.yaml
+
+      - name: Apply kubesphere-cluster-configuration in AKS Resources with kubectl
+        run: |
+          kubectl apply -f K8S/AZURE/cluster-configuration.yaml
+
+      - name: Apply install nginx-ingress in EKS Resources with kubectl
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
+
+      - name: Apply create nameserver in EKS Resources with kubectl
+        run: |
+          kubectl create ns multi-cloud-cti
+
+      - name: Apply ingress-nginx in EKS Resources with kubectl
+        run: |
+          kubectl apply -f K8S/AZURE/ingress-site.yaml
+
