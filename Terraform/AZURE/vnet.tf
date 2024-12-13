@@ -1,8 +1,3 @@
-resource "azurerm_resource_group" "resource-group" {
-  name     = var.resource_group_name
-  location = var.resource_group_location
-}
-
 resource "azurerm_virtual_network" "vnet-aks" {
   depends_on          = [azurerm_resource_group.resource-group]
   name                = var.vnet_name

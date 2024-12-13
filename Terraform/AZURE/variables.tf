@@ -1,18 +1,3 @@
-#################### CONFIGURACAO DO GRUPO DE RECURSOS
-
-# Nome do Resource Group.
-variable "resource_group_name" {
-  description = "Nome do Resource Group."
-  type        = string
-  default     = "RG-AKS-CTI"
-}
-# Local de criação do Resource Group.
-variable "resource_group_location" {
-  description = "Local de criação do Resource Group."
-  type        = string
-  default     = "East US"
-}
-
 #################### CONFIGURACAO DA VNET
 
 # Nome da VNET.
