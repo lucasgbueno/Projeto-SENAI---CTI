@@ -84,11 +84,13 @@ resource "azurerm_network_security_group" "aks-sg" {
 }
 
 resource "azurerm_subnet_network_security_group_association" "public1_nsg_association" {
+  depends_on = [ azurerm_subnet.aks_public_subnet_a, azurerm_network_security_group.aks-sg ]
   subnet_id                 = azurerm_subnet.aks_public_subnet_a.id
   network_security_group_id = azurerm_network_security_group.aks-sg.id
 
 }
 resource "azurerm_subnet_network_security_group_association" "public2_nsg_association" {
+  depends_on = [ azurerm_subnet.aks_public_subnet_b, azurerm_network_security_group.aks-sg ]
   subnet_id                 = azurerm_subnet.aks_public_subnet_b.id
   network_security_group_id = azurerm_network_security_group.aks-sg.id
 
