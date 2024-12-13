@@ -1,8 +1,8 @@
 resource "azurerm_kubernetes_cluster" "aks-cluster" {
   depends_on          = [azurerm_virtual_network.vnet-aks]
   name                = var.aks_cluster_name
-  location            = azurerm_resource_group.resource-group.location
-  resource_group_name = azurerm_resource_group.resource-group.name
+  location            = data.azurerm_resource_group.existing.location
+  resource_group_name = data.azurerm_resource_group.existing.name
   dns_prefix          = var.aks_cluster_dns
   kubernetes_version  = var.aks_version
 

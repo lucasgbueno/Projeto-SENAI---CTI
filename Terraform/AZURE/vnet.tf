@@ -1,30 +1,32 @@
 resource "azurerm_virtual_network" "vnet-aks" {
-  depends_on          = [azurerm_resource_group.resource-group]
+  depends_on = [ data.azurerm_resource_group.existing.name, data.azurerm_resource_group.existing.location ]
   name                = var.vnet_name
   address_space       = var.vnet_cidr
-  location            = azurerm_resource_group.resource-group.location
-  resource_group_name = azurerm_resource_group.resource-group.name
+  location            = data.azurerm_resource_group.existing.location
+  resource_group_name = data.azurerm_resource_group.existing.name
 }
 
 resource "azurerm_subnet" "aks_public_subnet_a" {
+  depends_on = [ azurerm_virtual_network ]
   name                 = var.vnet_subnet_public_a_name
-  resource_group_name  = azurerm_resource_group.resource-group.name
+  resource_group_name  = data.azurerm_resource_group.existing.name
   virtual_network_name = azurerm_virtual_network.vnet-aks.name
   address_prefixes     = var.vnet_cidr_subnet_public_a
 
 }
 
 resource "azurerm_subnet" "aks_public_subnet_b" {
+  depends_on = [ azurerm_virtual_network ]
   name                 = var.vnet_subnet_public_b_name
-  resource_group_name  = azurerm_resource_group.resource-group.name
+  resource_group_name  = data.azurerm_resource_group.existing.name
   virtual_network_name = azurerm_virtual_network.vnet-aks.name
   address_prefixes     = var.vnet_cidr_subnet_public_b
 }
 
 resource "azurerm_network_security_group" "aks-sg" {
   name                = var.vnet_security_group_name
-  location            = azurerm_resource_group.resource-group.location
-  resource_group_name = azurerm_resource_group.resource-group.name
+  location            = data.azurerm_resource_group.existing.location
+  resource_group_name = data.azurerm_resource_group.existing.name
 
   security_rule {
     name                       = "SSH"

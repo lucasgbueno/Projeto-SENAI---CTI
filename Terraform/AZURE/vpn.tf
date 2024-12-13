@@ -1,6 +1,10 @@
+data "azurerm_resource_group" "existing" {
+  name = "RG-AKS-CTI"
+}
+
 resource "azurerm_subnet" "vpn_gateway_subnet_a" {
   name                 = "GatewaySubnet"
-  resource_group_name  = azurerm_resource_group.resource-group.name
+  resource_group_name  = data.azurerm_resource_group.existing.name
   virtual_network_name = azurerm_virtual_network.vnet-aks.name
   address_prefixes     = var.vnet_cidr_subnet_gateway_vpn
 }
@@ -8,8 +12,8 @@ resource "azurerm_subnet" "vpn_gateway_subnet_a" {
 # Criação do IP público estático para o VPN Gateway
 resource "azurerm_public_ip" "vpn_gateway_ip" {
   name                = "vpn-gateway-ip"
-  location            = azurerm_resource_group.resource-group.location # Escolha a região adequada
-  resource_group_name = azurerm_resource_group.resource-group.name     # Nome do seu grupo de recursos
+  location            = data.azurerm_resource_group.existing.location # Escolha a região adequada
+  resource_group_name = data.azurerm_resource_group.existing.name     # Nome do seu grupo de recursos
   allocation_method   = "Static"
   sku                 = "Standard" # Necessário para VPN Gateway
 }
@@ -18,7 +22,7 @@ resource "azurerm_public_ip" "vpn_gateway_ip" {
 resource "azurerm_virtual_network_gateway" "vpn_gateway" {
   name                = "VPN-VPG"
   location            = "East US"                         # Escolha a região adequada
-  resource_group_name = azurerm_resource_group.resource-group.name # Nome do seu grupo de recursos
+  resource_group_name = data.azurerm_resource_group.existing.name # Nome do seu grupo de recursos
   type                = "Vpn"                             # Tipo de Gateway: VPN
   sku                 = "VpnGw1"                          # SKU do Gateway: VpnGw1
   active_active       = false
@@ -33,8 +37,8 @@ resource "azurerm_virtual_network_gateway" "vpn_gateway" {
 
 resource "azurerm_route_table" "Rota_AWS" {
   name                = "tabela_vpn"
-  location            = azurerm_resource_group.resource-group.location
-  resource_group_name = azurerm_resource_group.resource-group.name
+  location            = data.azurerm_resource_group.existing.location
+  resource_group_name = data.azurerm_resource_group.existing.name
 
   route {
     name           = "route1"
@@ -60,8 +64,8 @@ resource "azurerm_subnet_route_table_association" "Associacao_tabela_2" {
 
 resource "azurerm_local_network_gateway" "GTW-LOCAL01" {
   name                = "GTW-LOCAL01"
-  location            = azurerm_resource_group.resource-group.location
-  resource_group_name = azurerm_resource_group.resource-group.name
+  location            = data.azurerm_resource_group.existing.location
+  resource_group_name = data.azurerm_resource_group.existing.name
 
   gateway_address = var.tunnel1_address_aws
   address_space = [
@@ -72,8 +76,8 @@ resource "azurerm_local_network_gateway" "GTW-LOCAL01" {
 
 resource "azurerm_local_network_gateway" "GTW-LOCAL02" {
   name                = "GTW-LOCAL02"
-  location            = azurerm_resource_group.resource-group.location
-  resource_group_name = azurerm_resource_group.resource-group.name
+  location            = data.azurerm_resource_group.existing.location
+  resource_group_name = data.azurerm_resource_group.existing.name
 
   gateway_address = var.tunnel2_address_aws
   address_space = [
@@ -84,8 +88,8 @@ resource "azurerm_local_network_gateway" "GTW-LOCAL02" {
 
 resource "azurerm_virtual_network_gateway_connection" "CONEXAO-01" {
   name                       = "CONEXAO-01"
-  location                   = azurerm_resource_group.resource-group.location
-  resource_group_name        = azurerm_resource_group.resource-group.name
+  location                   = data.azurerm_resource_group.existing.location
+  resource_group_name        = data.azurerm_resource_group.existing.name
   type                       = "IPsec"
   virtual_network_gateway_id = azurerm_virtual_network_gateway.vpn_gateway.id
   local_network_gateway_id   = azurerm_local_network_gateway.GTW-LOCAL01.id
@@ -96,8 +100,8 @@ resource "azurerm_virtual_network_gateway_connection" "CONEXAO-01" {
 
 resource "azurerm_virtual_network_gateway_connection" "CONEXAO-02" {
   name                       = "CONEXAO-02"
-  location                   = azurerm_resource_group.resource-group.location
-  resource_group_name        = azurerm_resource_group.resource-group.name
+  location                   = data.azurerm_resource_group.existing.location
+  resource_group_name        = data.azurerm_resource_group.existing.name
   type                       = "IPsec"
   virtual_network_gateway_id = azurerm_virtual_network_gateway.vpn_gateway.id
   local_network_gateway_id   = azurerm_local_network_gateway.GTW-LOCAL02.id
