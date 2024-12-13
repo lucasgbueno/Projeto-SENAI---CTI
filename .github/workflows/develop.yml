@@ -106,6 +106,9 @@ jobs:
         if: always()
         run: terraform apply -var "subId=${{ secrets.subId }}" -var "eks_service_role_arn=${{ secrets.eks_service_role_arn }}" -var "eks_instance_role_arn=${{ secrets.eks_instance_role_arn }}" -auto-approve
         #run: terraform apply --auto-approve
+        env:
+          eks_service_role_arn: ${{ secrets.EKS_SERVICE_ROLE_ARN }}
+          eks_instance_role_arn: ${{ secrets.EKS_INSTANCE_ROLE_ARN }}
 
   configure_kubernetes:
     name: Configure Kubernetes on EKS and AKS
