@@ -104,8 +104,7 @@ jobs:
       # Aplicar o Terraform para provisionar a infraestrutura (EKS e AKS)
       - name: Terraform Apply
         if: always()
-        run: echo "TERRAFORM APPLY" | figlet -c -f small
-            terraform apply -var "subId=${{ secrets.subId }}" -auto-approve
+        run: terraform apply -var "subId=${{ secrets.subId }}" -auto-approve
         #run: terraform apply --auto-approve
 
   configure_kubernetes:
