@@ -9,3 +9,13 @@ variable "region_aws" {
 variable "subId" {
   sensitive = true
 }
+
+# ID de serviço para criação do cluster EKS.
+variable "eks_service_role_arn" {
+  type = string
+}
+
+# ID de serviço para criação dos Nodes do EKS.
+variable "eks_instance_role_arn" {
+  type = string
+}
