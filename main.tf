@@ -11,5 +11,7 @@ module "vpn_aws" {
   source = "./Terraform/AWS"
   vpn_gateway_ip_address_azure = module.vpn_azure.azure_vpn_gateway_ip_address
   aws_region = var.region_aws
+  eks_service_role_arn = var.eks_service_role_arn
+  eks_instance_role_arn = var.eks_instance_role_arn
   depends_on = [ module.vpn_azure.vpn_gateway_ip_address_azure ]
 }
