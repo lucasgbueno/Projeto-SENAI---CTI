@@ -50,12 +50,20 @@ jobs:
 
           sudo apt-get install terraform -y
 
+      - name: Install TFLint
+        run: |
+          curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install.sh | bash
+
       - name: SNYK AUTH
         if: always()
         run : |
           snyk -d auth $SNYK_TOKEN
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_AUTH_TOKEN }}
+
+      # Passo 4: Rodar o TFLint
+      - name: Run TFLint
+        run: tflint
 
       # Configurar AWS Credenciais
       - name: Configure AWS Credentials
