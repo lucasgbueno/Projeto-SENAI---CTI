@@ -13,5 +13,5 @@ module "vpn_aws" {
   aws_region = var.region_aws
   eks_service_role_arn = var.eks_service_role_arn
   eks_instance_role_arn = var.eks_instance_role_arn
-  depends_on = [ module.vpn_azure.vpn_gateway_ip_address_azure ]
+  depends_on = [ module.vpn_azure.vpn_gateway_ip_address_azure, var.eks_service_role_arn, var.eks_instance_role_arn  ]
 }
