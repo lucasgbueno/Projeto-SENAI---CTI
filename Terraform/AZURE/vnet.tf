@@ -1,5 +1,5 @@
 resource "azurerm_virtual_network" "vnet-aks" {
-  depends_on = [ data.azurerm_resource_group.existing.name, data.azurerm_resource_group.existing.location ]
+  depends_on = [ data.azurerm_resource_group.existing, var.vnet_name, var.vnet_cidr ]
   name                = var.vnet_name
   address_space       = var.vnet_cidr
   location            = data.azurerm_resource_group.existing.location
@@ -7,7 +7,7 @@ resource "azurerm_virtual_network" "vnet-aks" {
 }
 
 resource "azurerm_subnet" "aks_public_subnet_a" {
-  depends_on = [ azurerm_virtual_network ]
+  depends_on = [ azurerm_virtual_network.vnet-aks, var.vnet_subnet_public_a_name, data.azurerm_resource_group.existing, var.vnet_cidr_subnet_public_a ]
   name                 = var.vnet_subnet_public_a_name
   resource_group_name  = data.azurerm_resource_group.existing.name
   virtual_network_name = azurerm_virtual_network.vnet-aks.name
@@ -16,7 +16,7 @@ resource "azurerm_subnet" "aks_public_subnet_a" {
 }
 
 resource "azurerm_subnet" "aks_public_subnet_b" {
-  depends_on = [ azurerm_virtual_network ]
+  depends_on = [ azurerm_virtual_network.vnet-aks, var.vnet_subnet_public_b_name, data.azurerm_resource_group.existing, var.vnet_cidr_subnet_public_b ]
   name                 = var.vnet_subnet_public_b_name
   resource_group_name  = data.azurerm_resource_group.existing.name
   virtual_network_name = azurerm_virtual_network.vnet-aks.name
@@ -24,6 +24,7 @@ resource "azurerm_subnet" "aks_public_subnet_b" {
 }
 
 resource "azurerm_network_security_group" "aks-sg" {
+  depends_on = [ var.vnet_security_group_name, data.azurerm_resource_group.existing, var.vpc_aws_cidr_vpn, var.vnet_cidr_string ]
   name                = var.vnet_security_group_name
   location            = data.azurerm_resource_group.existing.location
   resource_group_name = data.azurerm_resource_group.existing.name

@@ -1,4 +1,5 @@
 resource "aws_vpn_gateway" "vpn_gateway" {
+  depends_on = [ aws_vpc.eks_vpc ]
   vpc_id = aws_vpc.eks_vpc.id
   tags = {
     Name = "aws_vpn_gateway"
@@ -6,6 +7,7 @@ resource "aws_vpn_gateway" "vpn_gateway" {
 }
 
 resource "aws_customer_gateway" "cg" {
+  depends_on = [ var.vpn_gateway_ip_address_azure ]
   bgp_asn    = 65000
   ip_address = var.vpn_gateway_ip_address_azure
   type       = "ipsec.1"
@@ -15,6 +17,7 @@ resource "aws_customer_gateway" "cg" {
 }
 
 resource "aws_vpn_connection" "vpn_connection" {
+  depends_on = [ aws_vpn_gateway.vpn_gateway, aws_customer_gateway.cg ]
   vpn_gateway_id      = aws_vpn_gateway.vpn_gateway.id
   customer_gateway_id = aws_customer_gateway.cg.id
   type                = "ipsec.1"
@@ -31,10 +34,12 @@ resource "aws_vpn_gateway_route_propagation" "vpn_propagation" {
 }
 
 resource "aws_vpn_connection_route" "vpn_static_route_1" {
+  depends_on = [ aws_vpn_connection.vpn_connection, var.vnet_cidr_subnet_public_a_vpn_azure ]
   vpn_connection_id   = aws_vpn_connection.vpn_connection.id
   destination_cidr_block = var.vnet_cidr_subnet_public_a_vpn_azure
 }
 resource "aws_vpn_connection_route" "vpn_static_route_2" {
+  depends_on = [ aws_vpn_connection.vpn_connection, var.vnet_cidr_subnet_public_b_vpn_azure ]
   vpn_connection_id   = aws_vpn_connection.vpn_connection.id
   destination_cidr_block = var.vnet_cidr_subnet_public_b_vpn_azure
 }

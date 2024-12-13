@@ -1,5 +1,6 @@
 # Criando VPC na AWS.
 resource "aws_vpc" "eks_vpc" {
+  depends_on = [ var.vpc_cidr ]
   cidr_block = var.vpc_cidr
   enable_dns_support = true
   enable_dns_hostnames = true
@@ -10,6 +11,7 @@ resource "aws_vpc" "eks_vpc" {
 
 # Criando Internet Gateway.
 resource "aws_internet_gateway" "eks_igw" {
+  depends_on = [ aws_vpc.eks_vpc ]
   vpc_id = aws_vpc.eks_vpc.id
   tags = {
     Name = var.vpc_igw_name
@@ -18,6 +20,7 @@ resource "aws_internet_gateway" "eks_igw" {
 
 # Criando Tabela de Rota Pública.
 resource "aws_route_table" "eks_public_route_table" {
+  depends_on = [ aws_vpc.eks_vpc, aws_internet_gateway.eks_igw, var.vpc_cidr_public_route, var.vnet_cidr_subnet_public_a_vpn_azure, aws_vpn_gateway.vpn_gateway, var.vnet_cidr_subnet_public_b_vpn_azure ]
   vpc_id = aws_vpc.eks_vpc.id
   route {
     cidr_block = var.vpc_cidr_public_route
@@ -38,6 +41,7 @@ resource "aws_route_table" "eks_public_route_table" {
 
 # Criando SubNet Pública A.
 resource "aws_subnet" "eks_public_subnet_a" {
+  depends_on = [ aws_vpc.eks_vpc, var.vpc_cidr_subnet_public_a ]
   vpc_id            = aws_vpc.eks_vpc.id
   cidr_block        = var.vpc_cidr_subnet_public_a
   map_public_ip_on_launch = true
@@ -49,6 +53,7 @@ resource "aws_subnet" "eks_public_subnet_a" {
 
 # Criando SubNet Pública B.
 resource "aws_subnet" "eks_public_subnet_b" {
+  depends_on = [ aws_vpc.eks_vpc, var.vpc_cidr_subnet_public_b ]
   vpc_id            = aws_vpc.eks_vpc.id
   cidr_block        = var.vpc_cidr_subnet_public_b
   map_public_ip_on_launch = true
@@ -60,17 +65,20 @@ resource "aws_subnet" "eks_public_subnet_b" {
 
 # Associando Subnets Públicas à Tabela de Rotas Publica.
 resource "aws_route_table_association" "eks_public_a" {
+  depends_on = [ aws_subnet.eks_public_subnet_a, aws_route_table.eks_public_route_table ]
   subnet_id      = aws_subnet.eks_public_subnet_a.id
   route_table_id = aws_route_table.eks_public_route_table.id
 }
 # Associando Subnets Públicas à Tabela de Rotas Publica.
 resource "aws_route_table_association" "eks_public_b" {
+  depends_on = [ aws_subnet.eks_public_subnet_b, aws_route_table.eks_public_route_table ]
   subnet_id      = aws_subnet.eks_public_subnet_b.id
   route_table_id = aws_route_table.eks_public_route_table.id
 }
 
 # Criando Security Group para o EKS.
 resource "aws_security_group" "eks_sg" {
+  depends_on = [ aws_vpc.eks_vpc, var.vpc_security_group_name ]
   vpc_id = aws_vpc.eks_vpc.id
   name   = var.vpc_security_group_name
 

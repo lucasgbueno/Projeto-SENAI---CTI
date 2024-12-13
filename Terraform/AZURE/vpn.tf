@@ -3,6 +3,7 @@ data "azurerm_resource_group" "existing" {
 }
 
 resource "azurerm_subnet" "vpn_gateway_subnet_a" {
+  depends_on = [ data.azurerm_resource_group.existing, azurerm_virtual_network.vnet-aks, var.vnet_cidr_subnet_gateway_vpn ]
   name                 = "GatewaySubnet"
   resource_group_name  = data.azurerm_resource_group.existing.name
   virtual_network_name = azurerm_virtual_network.vnet-aks.name
@@ -11,6 +12,7 @@ resource "azurerm_subnet" "vpn_gateway_subnet_a" {
 
 # Criação do IP público estático para o VPN Gateway
 resource "azurerm_public_ip" "vpn_gateway_ip" {
+  depends_on = [ data.azurerm_resource_group.existing ]
   name                = "vpn-gateway-ip"
   location            = data.azurerm_resource_group.existing.location # Escolha a região adequada
   resource_group_name = data.azurerm_resource_group.existing.name     # Nome do seu grupo de recursos
@@ -20,6 +22,7 @@ resource "azurerm_public_ip" "vpn_gateway_ip" {
 
 # Criação do Gateway de Rede Virtual (VPN Gateway)
 resource "azurerm_virtual_network_gateway" "vpn_gateway" {
+  depends_on = [ data.azurerm_resource_group.existing, azurerm_public_ip.vpn_gateway_ip, azurerm_subnet.vpn_gateway_subnet_a ]
   name                = "VPN-VPG"
   location            = "East US"                         # Escolha a região adequada
   resource_group_name = data.azurerm_resource_group.existing.name # Nome do seu grupo de recursos
@@ -36,6 +39,7 @@ resource "azurerm_virtual_network_gateway" "vpn_gateway" {
 }
 
 resource "azurerm_route_table" "Rota_AWS" {
+  depends_on = [ data.azurerm_resource_group.existing, var.vpc_cidr_subnet_public_a_vpn, var.vpc_cidr_subnet_public_b_vpn ]
   name                = "tabela_vpn"
   location            = data.azurerm_resource_group.existing.location
   resource_group_name = data.azurerm_resource_group.existing.name
@@ -53,16 +57,19 @@ resource "azurerm_route_table" "Rota_AWS" {
 }
 
 resource "azurerm_subnet_route_table_association" "Associacao_tabela_1" {
+  depends_on = [ azurerm_subnet.aks_public_subnet_a, azurerm_route_table.Rota_AWS ]
   subnet_id      = azurerm_subnet.aks_public_subnet_a.id
   route_table_id = azurerm_route_table.Rota_AWS.id
 }
 resource "azurerm_subnet_route_table_association" "Associacao_tabela_2" {
+  depends_on = [ azurerm_subnet.aks_public_subnet_b, azurerm_route_table.Rota_AWS ]
   subnet_id      = azurerm_subnet.aks_public_subnet_b.id
   route_table_id = azurerm_route_table.Rota_AWS.id
 }
 
 
 resource "azurerm_local_network_gateway" "GTW-LOCAL01" {
+  depends_on = [ data.azurerm_resource_group.existing, var.tunnel1_address_aws, var.vpc_cidr_subnet_public_a_vpn, var.vpc_cidr_subnet_public_b_vpn ]
   name                = "GTW-LOCAL01"
   location            = data.azurerm_resource_group.existing.location
   resource_group_name = data.azurerm_resource_group.existing.name
@@ -75,6 +82,7 @@ resource "azurerm_local_network_gateway" "GTW-LOCAL01" {
 }
 
 resource "azurerm_local_network_gateway" "GTW-LOCAL02" {
+  depends_on = [ data.azurerm_resource_group.existing, var.tunnel2_address_aws, var.vpc_cidr_subnet_public_a_vpn, var.vpc_cidr_subnet_public_b_vpn ]
   name                = "GTW-LOCAL02"
   location            = data.azurerm_resource_group.existing.location
   resource_group_name = data.azurerm_resource_group.existing.name
@@ -87,6 +95,7 @@ resource "azurerm_local_network_gateway" "GTW-LOCAL02" {
 }
 
 resource "azurerm_virtual_network_gateway_connection" "CONEXAO-01" {
+  depends_on = [ data.azurerm_resource_group.existing, azurerm_virtual_network_gateway.vpn_gateway, azurerm_local_network_gateway.GTW-LOCAL01, var.tunnel1_preshared_key_aws ]
   name                       = "CONEXAO-01"
   location                   = data.azurerm_resource_group.existing.location
   resource_group_name        = data.azurerm_resource_group.existing.name
@@ -99,6 +108,7 @@ resource "azurerm_virtual_network_gateway_connection" "CONEXAO-01" {
 
 
 resource "azurerm_virtual_network_gateway_connection" "CONEXAO-02" {
+  depends_on = [ data.azurerm_resource_group.existing, azurerm_virtual_network_gateway.vpn_gateway, azurerm_local_network_gateway.GTW-LOCAL02, var.tunnel2_preshared_key_aws ]
   name                       = "CONEXAO-02"
   location                   = data.azurerm_resource_group.existing.location
   resource_group_name        = data.azurerm_resource_group.existing.name
