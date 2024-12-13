@@ -52,7 +52,7 @@ jobs:
 
       - name: Install TFLint
         run: |
-          curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install.sh | bash
+          curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install.sh
 
       - name: SNYK AUTH
         if: always()
