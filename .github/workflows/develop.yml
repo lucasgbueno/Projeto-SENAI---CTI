@@ -24,43 +24,85 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v2
+        if: always()
+        uses: actions/checkout@v4
+
+      - name: INSTALL PACKAGES
+        if: always()
+        run: |
+          sudo apt update -y
+          sudo apt-get install figlet unzip -y
+
+          curl https://static.snyk.io/cli/latest/snyk-linux -o snyk
+          chmod +x ./snyk
+          mv ./snyk /usr/local/bin/
+
+          sudo apt-get update && sudo apt-get install -y gnupg software-properties-common
+          wget -O- https://apt.releases.hashicorp.com/gpg | \
+            gpg --dearmor | \
+            sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg > /dev/null
+         
+          echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] \
+            https://apt.releases.hashicorp.com $(lsb_release -cs) main" | \
+            sudo tee /etc/apt/sources.list.d/hashicorp.list
+
+          sudo apt update -y
+
+          sudo apt-get install terraform -y
+
+      - name: SNYK AUTH
+        if: always()
+        run : |
+          snyk -d auth $SNYK_TOKEN
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_AUTH_TOKEN }}
 
       # Configurar AWS Credenciais
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        if: always()
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Test aws cli
+        if: always()
+        run: aws sts get-caller-identity
+
       # Configurar Azure Credenciais
       - name: Azure Login
+        if: always()
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       # Instalar o Terraform
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v1
-        with:
-          terraform_version: ${{ env.TERRAFORM_VERSION }}
+#      - name: Setup Terraform
+#        uses: hashicorp/setup-terraform@v1
+#        with:
+#          terraform_version: ${{ env.TERRAFORM_VERSION }}
 
       # Definir a variável EKS_SERVICE_ROLE_ARN para o Terraform
       - name: Set EKS Service Role ARN
+        if: always()
         run: echo "export eks_service_role_arn=${{ secrets.eks_service_role_arn }}" >> $GITHUB_ENV
 
       - name: Set EKS Instance Role ARN
+        if: always()
         run: echo "export eks_instance_role_arn=${{ secrets.eks_instance_role_arn }}" >> $GITHUB_ENV
 
       # Inicializar o Terraform
       - name: Terraform Init
+        if: always()
         run: terraform init
 
       # Aplicar o Terraform para provisionar a infraestrutura (EKS e AKS)
       - name: Terraform Apply
-        run: terraform apply -var "subId=${{ secrets.subId }}" --auto-approve
+        if: always()
+        run: echo "TERRAFORM APPLY" | figlet -c -f small
+            terraform apply -var "subId=${{ secrets.subId }}" --auto-approve
         #run: terraform apply --auto-approve
 
   configure_kubernetes:
@@ -70,11 +112,13 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v2
+        if: always()
+        uses: actions/checkout@v4
 
       # Configurar AWS Credenciais
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        if: always()
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -83,12 +127,14 @@ jobs:
 
       # Configurar Azure Credenciais
       - name: Azure Login
+        if: always()
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       # Instalar o AWS CLI
       - name: Install AWS CLI
+        if: always()
         run: |
           curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
           unzip awscliv2.zip
@@ -96,83 +142,115 @@ jobs:
 
       # Instalar o eksctl
       - name: Install eksctl
+        if: always()
         run: |
+          echo "INSTALL EKSCTL" | figlet -c -f small
           curl --location "https://github.com/weaveworks/eksctl/releases/download/v${{ env.EKSCTL_VERSION }}/eksctl_Linux_amd64.tar.gz" | tar xz -C /tmp
           sudo mv /tmp/eksctl /usr/local/bin
 
       # Instalar o kubectl
       - name: Install kubectl
+        if: always()
         run: |
+          echo "INSTALL KUBECTL" | figlet -c -f small
           curl -LO "https://dl.k8s.io/release/v${{ env.KUBECTL_VERSION }}/bin/linux/amd64/kubectl"
           chmod +x ./kubectl
           sudo mv ./kubectl /usr/local/bin/kubectl
 
       # Instalar o Azure CLI
       - name: Install Azure CLI
+        if: always()
         run: |
+          echo "INSTALL AZURE CLI" | figlet -c -f small
           curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 
       # Configurar o EKS (obter o kubeconfig para o EKS)
       - name: Get EKS kubeconfig
+        if: always()
         run: |
           eksctl utils write-kubeconfig --cluster= ${{ env.EKS_NAME }} --region ${{ env.AWS_REGION }}
 
       # Aplicar Configurações no EKS com kubectl
       - name: Apply kubesphere-installer in EKS Resources with kubectl
+        if: always()
         run: |
+          echo "APPLY KUBESPHERE-INSTALLER" | figlet -c -f small
           kubectl apply -f K8S/AWS/kubesphere-installer.yaml
 
       - name: Configure Default StorageClass in EKS Resources with kubectl
+        if: always()
         run: |
+          echo "CONFIGURE STORAGECLASS" | figlet -c -f small
           kubectl patch storageclass gp2 -p "{\"metadata\": {\"annotations\": {\"storageclass.kubernetes.io/is-default-class\": \"true\"}}}"
 
       - name: Apply kubesphere-cluster-configuration in EKS Resources with kubectl
+        if: always()
         run: |
+          echo "APPLY CLUSTER-CONFIGURATION" | figlet -c -f small
           kubectl apply -f K8S/AWS/cluster-configuration.yaml
 
       - name: Apply install nginx-ingress in EKS Resources with kubectl
+        if: always()
         run: |
+          echo "INSTALL NGINX-INGRESS" | figlet -c -f small
           kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
 
       - name: Apply install cert-manager in EKS Resources with kubectl
+        if: always()
         run: |
+          echo "INSTALL CERT-MANAGER" | figlet -c -f small
           kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.1/cert-manager.yaml
 
       - name: Apply create nameserver in EKS Resources with kubectl
+        if: always()
         run: |
           kubectl create ns multi-cloud-cti
 
       - name: Apply letsecrypt in EKS Resources with kubectl
+        if: always()
         run: |
+          echo "APLLY LETSENCRYPT" | figlet -c -f small
           kubectl apply -f K8S/AWS/letsencrypt.yaml
 
       - name: Apply ingress-nginx in EKS Resources with kubectl
+        if: always()
         run: |
+          echo "APPLY INGRESS-NGINX" | figlet -c -f small
           kubectl apply -f K8S/AWS/ingress-site.yaml
 
       # Configurar o AKS (obter o kubeconfig para o AKS)
       - name: Get AKS kubeconfig
+        if: always()
         run: |
           az aks get-credentials --resource-group ${{ env.RG_NAME }} --name ${{ env.AKS_NAME }}
 
       # Aplicar Configurações no AKS com kubectl
       - name: Apply kubesphere-installer in AKS Resources with kubectl
+        if: always()
         run: |
+          echo "APPLY KUBESPHERE-INSTALLER" | figlet -c -f small
           kubectl apply -f K8S/AZURE/kubesphere-installer.yaml
 
       - name: Apply kubesphere-cluster-configuration in AKS Resources with kubectl
+        if: always()
         run: |
+          echo "APPLY CLUSTER-CONFIGURATION" | figlet -c -f small
           kubectl apply -f K8S/AZURE/cluster-configuration.yaml
 
       - name: Apply install nginx-ingress in EKS Resources with kubectl
+        if: always()
         run: |
+          echo "INSTALL NGINX-INGRESS" | figlet -c -f small
           kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
 
       - name: Apply create nameserver in EKS Resources with kubectl
+        if: always()
         run: |
           kubectl create ns multi-cloud-cti
 
       - name: Apply ingress-nginx in EKS Resources with kubectl
+        if: always()
         run: |
+          echo "APPLY INGRESS-NGINX" | figlet -c -f small
           kubectl apply -f K8S/AZURE/ingress-site.yaml
 
